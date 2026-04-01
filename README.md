@@ -1,5 +1,14 @@
 # Pesach OS ✨
 
+<img width="1440" height="850" alt="image" src="https://github.com/user-attachments/assets/c8111e1a-60c8-451b-b446-0ec31eb23aa8" />
+
+<img width="1440" height="856" alt="image" src="https://github.com/user-attachments/assets/a2692955-cf71-4459-a363-b1862b85f75b" />
+
+<img width="1440" height="856" alt="image" src="https://github.com/user-attachments/assets/0dbf360b-fef1-4461-a784-d7f6e617b4f2" />
+
+
+
+
 מערכת חכמה, אינטראקטיבית וניהולית לחג הפסח.
 Pesach OS נועדה להפוך את ההכנות לחג, את ליל הסדר ואת ימי החג לחוויה מאורגנת, רוחנית ומהנה לכל המשפחה.
 
