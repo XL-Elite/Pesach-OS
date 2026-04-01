@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the Pesach OS application.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "timestamp" },
+        "lastLogin": { "type": "timestamp" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "A chat session between a user and the AI.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" },
+        "tokenUsage": { "type": "number" }
+      },
+      "required": ["userId", "createdAt", "updatedAt", "tokenUsage"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A single message within a chat session.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "model", "system"] },
+        "text": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["sessionId", "userId", "role", "text", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A cleaning or preparation task for Pesach.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["cleaning", "shopping", "cooking"] },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "done"] },
+        "hasChametz": { "type": "boolean", "description": "Indicates if Chametz was found during this task" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "title", "category", "status", "createdAt"]
+    },
+    "MealPlan": {
+      "title": "MealPlan",
+      "description": "A planned meal menu.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "guests": { "type": "number" },
+        "style": { "type": "string", "enum": ["traditional", "modern"] },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "title", "guests", "style", "items", "createdAt"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "An item in the shopping list or home inventory.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "isPurchased": { "type": "boolean" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "name", "isPurchased", "createdAt"]
+    },
+    "FavoritePassage": {
+      "title": "FavoritePassage",
+      "description": "A user's favorite Haggadah passage.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "passageId": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "passageId", "createdAt"]
+    },
+    "KidProfile": {
+      "title": "KidProfile",
+      "description": "A child's profile for gamification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "score": { "type": "number" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "name", "avatar", "score", "createdAt"]
+    },
+    "SpiritualJournal": {
+      "title": "SpiritualJournal",
+      "description": "A user's personal reflection on internal chametz.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "aiFeedback": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "content", "createdAt"]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "A post shared with the community.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string", "enum": ["insight", "recipe", "tip"] },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "authorName", "content", "category", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles and roles."
+    },
+    "chatSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/ChatSession" },
+      "description": "Stores chat sessions for users."
+    },
+    "chatSessions/{sessionId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Stores messages within a specific chat session."
+    },
+    "tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Stores tasks for users."
+    },
+    "mealPlans/{planId}": {
+      "schema": { "$ref": "#/entities/MealPlan" },
+      "description": "Stores meal plans."
+    },
+    "inventoryItems/{itemId}": {
+      "schema": { "$ref": "#/entities/InventoryItem" },
+      "description": "Stores shopping and inventory items."
+    },
+    "favorites/{favId}": {
+      "schema": { "$ref": "#/entities/FavoritePassage" },
+      "description": "Stores favorite passages."
+    },
+    "kids/{kidId}": {
+      "schema": { "$ref": "#/entities/KidProfile" },
+      "description": "Stores kid profiles and scores."
+    },
+    "journals/{journalId}": {
+      "schema": { "$ref": "#/entities/SpiritualJournal" },
+      "description": "Stores personal spiritual reflections."
+    },
+    "communityPosts/{postId}": {
+      "schema": { "$ref": "#/entities/CommunityPost" },
+      "description": "Stores community shared posts."
+    }
+  }
+}

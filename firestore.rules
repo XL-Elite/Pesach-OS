@@ -1,0 +1,233 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "globalelite8200@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+    
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser() {
+      let data = request.resource.data;
+      return hasRequiredFields(['uid', 'email', 'role', 'createdAt']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.email is string && data.email.size() > 0 &&
+             data.role in ['user', 'admin'] &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidChatSession() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'createdAt', 'updatedAt', 'tokenUsage']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.tokenUsage is number && data.tokenUsage >= 0 &&
+             data.createdAt is timestamp && data.updatedAt is timestamp;
+    }
+    
+    function isValidChatMessage() {
+      let data = request.resource.data;
+      return hasRequiredFields(['sessionId', 'userId', 'role', 'text', 'createdAt']) &&
+             data.sessionId is string && data.sessionId.size() > 0 &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.role in ['user', 'model', 'system'] &&
+             data.text is string && data.text.size() <= 100000 &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidTask() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'title', 'category', 'status', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 500 &&
+             data.category in ['cleaning', 'shopping', 'cooking'] &&
+             data.status in ['pending', 'done'] &&
+             data.createdAt is timestamp &&
+             (!('hasChametz' in data) || data.hasChametz is bool);
+    }
+
+    function isValidMealPlan() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'title', 'guests', 'style', 'items', 'createdAt']) &&
+             data.userId is string && data.guests is number &&
+             data.style in ['traditional', 'modern'] &&
+             data.items is list &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidInventoryItem() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'name', 'isPurchased', 'createdAt']) &&
+             data.userId is string && data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.isPurchased is bool &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidFavorite() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'passageId', 'createdAt']) &&
+             data.userId is string && data.passageId is string && data.passageId.size() > 0 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidKidProfile() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'name', 'avatar', 'score', 'createdAt']) &&
+             data.userId is string && data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.avatar is string &&
+             data.score is number && data.score >= 0 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidSpiritualJournal() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'content', 'createdAt']) &&
+             data.userId is string && data.content is string && data.content.size() <= 5000 &&
+             (!('aiFeedback' in data) || data.aiFeedback is string) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCommunityPost() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'authorName', 'content', 'category', 'createdAt']) &&
+             data.userId is string && data.authorName is string &&
+             (!('authorAvatar' in data) || data.authorAvatar is string) &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
+             data.category in ['insight', 'recipe', 'tip'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidGroupChatMessage() {
+      let data = request.resource.data;
+      return hasRequiredFields(['userId', 'authorName', 'text', 'createdAt']) &&
+             data.userId is string && data.authorName is string &&
+             (!('authorAvatar' in data) || data.authorAvatar is string) &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 2000 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /system/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /groupChat/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidGroupChatMessage() && uidUnchanged();
+      allow update: if false; // Messages shouldn't be updated
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser() && 
+                    ((isOwner(userId) && request.resource.data.role == 'user') || isAdmin());
+      allow update: if isAuthenticated() && isValidUser() && 
+                    ((isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    match /chatSessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidChatSession() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidChatSession() && uidNotModified() && 
+                    (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+      
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && 
+                    (get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid || isAdmin());
+        allow create: if isAuthenticated() && isValidChatMessage() && uidUnchanged() &&
+                      get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.userId == request.auth.uid;
+        allow update: if false; // Messages shouldn't be updated
+        allow delete: if isAdmin();
+      }
+    }
+    
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidTask() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidTask() && uidNotModified() && 
+                    (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+    
+    match /mealPlans/{planId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidMealPlan() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidMealPlan() && uidNotModified() && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+    
+    match /inventoryItems/{itemId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidInventoryItem() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidInventoryItem() && uidNotModified() && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+    
+    match /favorites/{favId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidFavorite() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidFavorite() && uidNotModified() && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+    
+    match /kids/{kidId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidKidProfile() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidKidProfile() && uidNotModified() && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+    
+    match /journals/{journalId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidSpiritualJournal() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidSpiritualJournal() && uidNotModified() && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+    
+    match /communityPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCommunityPost() && uidUnchanged();
+      allow update: if isAuthenticated() && isValidCommunityPost() && uidNotModified() && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+  }
+}
